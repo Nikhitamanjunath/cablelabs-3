@@ -1,0 +1,94 @@
+version: '3'
+
+vars:
+  VENV_DIR: .venv
+  WORK_DIR: work_dir
+  PYTHON: python3
+  PIP: '{{.VENV_DIR}}/bin/pip'
+  PYTHON_VENV: '{{.VENV_DIR}}/bin/python'
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  venv:
+    desc: Create virtual environment if it doesn't exist
+    cmds:
+      - |
+        if [ ! -d {{.VENV_DIR}} ]; then
+          echo "Creating virtual environment..."
+          {{.PYTHON}} -m venv {{.VENV_DIR}}
+          echo "Virtual environment created at {{.VENV_DIR}}"
+        else
+          echo "Virtual environment already exists at {{.VENV_DIR}}"
+        fi
+
+  deps:
+    desc: Install Python dependencies from requirements.txt
+    deps: [venv]
+    cmds:
+      - echo "Installing dependencies from requirements.txt..."
+      - '{{.PIP}} install --upgrade pip'
+      - '{{.PIP}} install -r requirements.txt'
+      - echo "Dependencies installed successfully"
+
+  setup:
+    desc: Set up virtual environment and install all dependencies
+    deps: [deps]
+    cmds:
+      - echo "Setup complete! Virtual environment ready at {{.VENV_DIR}}"
+
+  notebook:
+    desc: Launch Jupyter (open notebooks; 1_visualize_raw_data, 2_visualize_csv)
+    deps: [deps]
+    cmds:
+      - '{{.PYTHON_VENV}} -m jupyter notebook notebooks/'
+
+  integrate-raw:
+    desc: Copy parquets from Data1 2 (and Data1, Data2) into work_dir/raw_data, rename to YYYYMMDD_HHMMSS, set mtime
+    cmds:
+      - mkdir -p {{.WORK_DIR}}/raw_data
+      - '{{.PYTHON}} scripts/integrate_raw_data.py --work-dir {{.WORK_DIR}}'
+
+  integrate-raw-dry:
+    desc: Dry-run integrate-raw (print what would be copied)
+    cmds:
+      - '{{.PYTHON}} scripts/integrate_raw_data.py --work-dir {{.WORK_DIR}} --dry-run'
+
+  transform:
+    desc: Transform parquet in work_dir/raw_data to model-ready parquet in work_dir/transformed (uses config date, band, cbw)
+    deps: [deps]
+    cmds:
+      - mkdir -p {{.WORK_DIR}}/raw_data {{.WORK_DIR}}/transformed
+      - '{{.PYTHON_VENV}} -m transform.transform --work-dir {{.WORK_DIR}}'
+
+  synthesize:
+    desc: Fill blanks in transformed parquet (2D interpolation + 0 fallback), write to work_dir/synthesized (no overwrite)
+    deps: [deps]
+    cmds:
+      - mkdir -p {{.WORK_DIR}}/transformed {{.WORK_DIR}}/synthesized
+      - '{{.PYTHON_VENV}} -m synthesize.synthesize --work-dir {{.WORK_DIR}}'
+
+  clean-csvs:
+    desc: Delete work_dir/csvs folder
+    cmds:
+      - |
+        if [ -d {{.WORK_DIR}}/csvs ]; then
+          rm -rf {{.WORK_DIR}}/csvs
+          echo "Removed {{.WORK_DIR}}/csvs"
+        else
+          echo "No {{.WORK_DIR}}/csvs to remove"
+        fi
+
+  clean:
+    desc: Remove virtual environment
+    cmds:
+      - |
+        if [ -d {{.VENV_DIR}} ]; then
+          rm -rf {{.VENV_DIR}}
+          echo "Removed {{.VENV_DIR}}"
+        else
+          echo "No {{.VENV_DIR}} to remove"
+        fi

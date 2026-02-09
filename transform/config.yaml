@@ -1,0 +1,36 @@
+# Date to process. Single day: set date_filter (e.g. "2026-02-03"). Range: set date_from and/or date_to (inclusive).
+# If date_filter is set, it overrides date_from/date_to. If all are null, transform all days found in raw_data.
+date_filter: null
+# date_from: "2026-02-01"
+# date_to: "2026-02-02"
+
+# Optional band filter (e.g. "195MHz", "3765MHz"). If null or not set, process all bands under raw_data.
+# band: "195MHz"
+band: null
+
+# Channel bandwidth (Hz) per band for frequency binning. Same folder names as raw_data (195MHz, 539MHz, etc.).
+# Use cbw_default for any band not listed. If cbw is a single number, that value is used for all bands.
+cbw_default: 1000000
+cbw:
+  195MHz: 500000
+  539MHz: 1000000
+  915MHz: 250000
+  2441MHz: 1000000
+  3765MHz: 5000000
+  5500MHz: 5000000
+
+# Power threshold (dBm) per band. Only raw detections with trace_max >= threshold are counted.
+# Single value or list (e.g. -100 or [-90, -95, -100]) = same for all bands.
+# Or a map: band -> value or band -> list. Bands not listed use power_threshold_default.
+power_threshold_default: -100
+power_threshold:
+  195MHz: -110
+  539MHz: -105
+  915MHz: -110
+  2441MHz: -110
+  3765MHz: -100
+  5500MHz: -110
+
+# Timezone for parquet mtime -> CSV date/hour. If unset, uses system local (so CSV hour matches "last modified" in OS).
+# Set to "UTC" for UTC; or e.g. "America/Los_Angeles" for a named zone.
+# timezone: "UTC"
