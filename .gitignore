@@ -10,9 +10,9 @@ venv/
 ENV/
 env/
 
-# Working directory (raw parquet and generated CSVs); allow work_dir/synthesized/ to be committed
+# Working directory (raw parquet and generated CSVs); allow work_dir/final/ to be committed
 work_dir/*
-!work_dir/synthesized/
+!work_dir/final/
 
 # Legacy data directory (use work_dir/raw_data)
 data/

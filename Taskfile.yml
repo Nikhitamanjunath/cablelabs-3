@@ -64,11 +64,11 @@ tasks:
       - mkdir -p {{.WORK_DIR}}/raw_data {{.WORK_DIR}}/transformed
       - '{{.PYTHON_VENV}} -m transform.transform --work-dir {{.WORK_DIR}}'
 
-  synthesize:
-    desc: Fill blanks in transformed parquet (2D interpolation + 0 fallback), write to work_dir/synthesized (no overwrite)
+  finalize:
+    desc: Fill blanks in transformed parquet (prev + time-of-day delta), fill missing days; write to work_dir/final
     deps: [deps]
     cmds:
-      - mkdir -p {{.WORK_DIR}}/transformed {{.WORK_DIR}}/synthesized
+      - mkdir -p {{.WORK_DIR}}/transformed {{.WORK_DIR}}/final
       - '{{.PYTHON_VENV}} -m synthesize.synthesize --work-dir {{.WORK_DIR}}'
 
   clean-csvs:

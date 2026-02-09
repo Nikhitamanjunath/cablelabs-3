@@ -4,7 +4,7 @@ Reads work_dir/transformed/<band>/transformed_<YYYYMMDD>.parquet.
 - For days with data: fill missing (hour, freq) per threshold using value(prev hour, same freq) + delta(hour),
   where delta(hour) is the mean (AU at hour - AU at prev hour) from observed data.
 - For missing days (e.g. 5th): generate full grid from mean AU profile (mean over other days per hour/freq/threshold).
-Writes work_dir/synthesized/<band>/synthesized_<YYYYMMDD>.parquet. Does not modify transformed data.
+Writes work_dir/final/<band>/final_<YYYYMMDD>.parquet. Does not modify transformed data.
 """
 
 from __future__ import annotations
@@ -155,7 +155,7 @@ def _fill_with_prev_plus_delta(
 def run_synthesize(work_dir: Path) -> list[Path]:
     work_dir = work_dir.resolve()
     transformed_dir = work_dir / "transformed"
-    out_base = work_dir / "synthesized"
+    out_base = work_dir / "final"
     if not transformed_dir.exists():
         raise FileNotFoundError("Transformed directory not found: " + str(transformed_dir))
 
@@ -166,7 +166,7 @@ def run_synthesize(work_dir: Path) -> list[Path]:
 
     written: list[Path] = []
 
-    for band_dir in tqdm(band_dirs, desc="Synthesize bands", unit="band"):
+    for band_dir in tqdm(band_dirs, desc="Finalize bands", unit="band"):
         band_str = band_dir.name
         parquet_files = sorted(band_dir.glob("transformed_*.parquet"))
         if not parquet_files:
@@ -239,7 +239,7 @@ def run_synthesize(work_dir: Path) -> list[Path]:
                                 "au_pct": round(float(au), 6),
                             })
                 out_df = pd.DataFrame(rows)
-            out_path = out_dir / f"synthesized_{date_yyyymmdd}.parquet"
+            out_path = out_dir / f"final_{date_yyyymmdd}.parquet"
             out_df.to_parquet(out_path, index=False)
             written.append(out_path)
 
@@ -248,16 +248,16 @@ def run_synthesize(work_dir: Path) -> list[Path]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Synthesize: previous value + time-of-day delta; fill missing days. Write to work_dir/synthesized"
+        description="Finalize: previous value + time-of-day delta; fill missing days. Write to work_dir/final"
     )
-    parser.add_argument("--work-dir", type=Path, default=Path("work_dir"), help="Work directory (transformed, synthesized)")
+    parser.add_argument("--work-dir", type=Path, default=Path("work_dir"), help="Work directory (transformed, final)")
     args = parser.parse_args()
     work_dir = args.work_dir.resolve()
     paths = run_synthesize(work_dir)
     for p in paths:
         print(p)
     if not paths:
-        print("No synthesized parquet files written.")
+        print("No final parquet files written.")
 
 
 if __name__ == "__main__":
