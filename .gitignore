@@ -10,8 +10,9 @@ venv/
 ENV/
 env/
 
-# Working directory (raw parquet and generated CSVs)
-work_dir/
+# Working directory (raw parquet and generated CSVs); allow work_dir/synthesized/ to be committed
+work_dir/*
+!work_dir/synthesized/
 
 # Legacy data directory (use work_dir/raw_data)
 data/
@@ -20,4 +21,3 @@ data/
 .idea/
 .vscode/
 .DS_Store
-
