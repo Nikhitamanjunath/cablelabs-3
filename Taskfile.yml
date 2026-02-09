@@ -69,7 +69,7 @@ tasks:
     deps: [deps]
     cmds:
       - mkdir -p {{.WORK_DIR}}/transformed {{.WORK_DIR}}/final
-      - '{{.PYTHON_VENV}} -m synthesize.synthesize --work-dir {{.WORK_DIR}}'
+      - '{{.PYTHON_VENV}} -m finalize.finalize --work-dir {{.WORK_DIR}}'
 
   clean-csvs:
     desc: Delete work_dir/csvs folder

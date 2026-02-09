@@ -1,5 +1,5 @@
 """
-Synthesize: fill blanks using previous value + time-of-day delta; also synthesize missing days.
+Finalize: fill blanks using previous value + time-of-day delta; also fill missing days.
 Reads work_dir/transformed/<band>/transformed_<YYYYMMDD>.parquet.
 - For days with data: fill missing (hour, freq) per threshold using value(prev hour, same freq) + delta(hour),
   where delta(hour) is the mean (AU at hour - AU at prev hour) from observed data.
@@ -55,8 +55,6 @@ def _compute_deltas_and_profile(
     for th in thresholds:
         key = (band_str, th)
         for h in range(1, 24):
-            # Rows at hour h and hour h-1, same (date, freq)
-            # We need pairs (date, freq) that have both h and h-1
             deltas = []
             for _, df in band_dfs:
                 s_h = df[(df["threshold_dbm"] == th) & (df["hour"] == h)]
@@ -74,18 +72,10 @@ def _compute_deltas_and_profile(
             if deltas:
                 delta_by_key.setdefault((band_str, th, h), []).extend(deltas)
 
-    # Convert to mean delta per (band, threshold), array index = hour (0..23), hour 0 = 0
-    delta_by_hour: dict[tuple[str, int], float] = {}
-    for (b, th, h), vals in delta_by_key.items():
-        k = (b, th)
-        if k not in delta_by_hour:
-            delta_by_hour[k] = 0.0  # placeholder; we store per-hour in a different structure
-    # Better: return a dict (band, threshold, hour) -> mean_delta for hour in 1..23
-    delta_map: dict[tuple[str, int], float] = {}
+    delta_map: dict[tuple[str, int, int], float] = {}
     for (b, th, h), vals in delta_by_key.items():
         delta_map[(b, th, h)] = float(np.mean(vals))
-    # Expose as (band, threshold) -> dict hour -> delta for hour 1..23
-    delta_by_hour = {}  # (band, threshold) -> { hour: mean_delta }
+    delta_by_hour = {}
     for (b, th, h), v in delta_map.items():
         k = (b, th)
         if k not in delta_by_hour:
@@ -112,7 +102,6 @@ def _fill_with_prev_plus_delta(
     rows: list[dict] = []
     for th in thresholds_full:
         sub = df[df["threshold_dbm"] == th]
-        # Matrix: hour x freq, init with nan
         mat = np.full((len(hours_full), len(freqs_full)), np.nan)
         hour_to_idx = {h: i for i, h in enumerate(hours_full)}
         freq_to_idx = {f: j for j, f in enumerate(freqs_full)}
@@ -152,7 +141,7 @@ def _fill_with_prev_plus_delta(
     return pd.DataFrame(rows)
 
 
-def run_synthesize(work_dir: Path) -> list[Path]:
+def run_finalize(work_dir: Path) -> list[Path]:
     work_dir = work_dir.resolve()
     transformed_dir = work_dir / "transformed"
     out_base = work_dir / "final"
@@ -211,8 +200,14 @@ def run_synthesize(work_dir: Path) -> list[Path]:
             date_range.append(d.strftime("%Y%m%d"))
             d += timedelta(days=1)
 
-        out_dir = out_base / band_str
-        out_dir.mkdir(parents=True, exist_ok=True)
+        # 70% training, 30% testing (split by date, deterministic)
+        n_train = max(1, int(round(len(date_range) * 0.7)))
+        training_dates = set(date_range[:n_train])
+        testing_dates = set(date_range[n_train:])
+        training_dir = out_base / "training" / band_str
+        testing_dir = out_base / "testing" / band_str
+        training_dir.mkdir(parents=True, exist_ok=True)
+        testing_dir.mkdir(parents=True, exist_ok=True)
         df_by_date = {yyyymmdd: df for yyyymmdd, df in band_dfs_with_date}
 
         for date_yyyymmdd in date_range:
@@ -224,7 +219,6 @@ def run_synthesize(work_dir: Path) -> list[Path]:
                     delta_by_hour, mean_profile,
                 )
             else:
-                # Missing day: full grid from mean profile
                 rows = []
                 for hour in hours_full:
                     for freq in freqs_full:
@@ -239,6 +233,7 @@ def run_synthesize(work_dir: Path) -> list[Path]:
                                 "au_pct": round(float(au), 6),
                             })
                 out_df = pd.DataFrame(rows)
+            out_dir = training_dir if date_yyyymmdd in training_dates else testing_dir
             out_path = out_dir / f"final_{date_yyyymmdd}.parquet"
             out_df.to_parquet(out_path, index=False)
             written.append(out_path)
@@ -253,7 +248,7 @@ def main() -> None:
     parser.add_argument("--work-dir", type=Path, default=Path("work_dir"), help="Work directory (transformed, final)")
     args = parser.parse_args()
     work_dir = args.work_dir.resolve()
-    paths = run_synthesize(work_dir)
+    paths = run_finalize(work_dir)
     for p in paths:
         print(p)
     if not paths:
