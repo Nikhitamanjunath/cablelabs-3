@@ -3,7 +3,8 @@ version: '3'
 vars:
   VENV_DIR: .venv
   WORK_DIR: work_dir
-  PYTHON: python3
+  # With pyenv: use "python" (pyenv local 3.11.9 makes it 3.11). With Homebrew: set PYTHON=python3.11. See docs/PYTHON_VERSIONS.md.
+  PYTHON: '{{or (env "PYTHON") "python"}}'
   PIP: '{{.VENV_DIR}}/bin/pip'
   PYTHON_VENV: '{{.VENV_DIR}}/bin/python'
 

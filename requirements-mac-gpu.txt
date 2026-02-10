@@ -1,0 +1,27 @@
+# Use with Python 3.11 on Apple Silicon for GPU (tensorflow-metal).
+# Create venv: python3.11 -m venv .venv-gpu && source .venv-gpu/bin/activate
+# Then: pip install -r requirements-mac-gpu.txt
+# See docs/MAC_GPU_SETUP.md.
+
+# Parquet and data
+pyyaml>=6.0
+pandas>=2.0.0
+numpy>=1.24.0
+pyarrow>=14.0.0
+scipy>=1.10.0
+
+# Visualization
+matplotlib>=3.7.0
+plotly>=5.17.0
+
+# Jupyter
+jupyter>=1.0.0
+ipywidgets>=8.0.0
+
+# Optional
+tqdm>=4.65.0
+
+# ML (notebooks 10, 11–26) + Apple Silicon GPU. TensorFlow <=2.18.1 required for tensorflow-metal.
+tensorflow>=2.14.0,<=2.18.1
+tensorflow-metal>=1.0.0
+scikit-learn>=1.0.0
